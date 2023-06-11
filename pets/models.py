@@ -20,5 +20,4 @@ class Pet(models.Model):
     )
     traits = models.ManyToManyField("traits.Trait", related_name="pets")
 
-    def __str__(self):
-        return f"<({self.name})>" 
+   
