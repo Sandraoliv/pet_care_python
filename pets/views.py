@@ -10,12 +10,14 @@ from rest_framework.pagination import PageNumberPagination
 class PetView(APIView, PageNumberPagination):
     def get(self, request: Request) -> Response:
         pets = Pet.objects.all()
+
         trait = request.query_params.get('trait', None)
+
         if trait:
             pets = pets.filter(traits__trait_name__iexact=trait)
-
+        
         result_page = self.paginate_queryset(pets, request)
-
+        
         serializer = PetSerializer(instance=result_page, many=True)
 
         return self.get_paginated_response(serializer.data)
@@ -27,16 +29,15 @@ class PetView(APIView, PageNumberPagination):
         group_data = serializer.validated_data.pop('group')
         traits_data = serializer.validated_data.pop('traits')
         pets_data = serializer.validated_data
-
-        instance_group, _ = Group.objects.get_or_create(scientific_name=group_data['scientific_name'])
+        
+        instance_group, _ = Group.objects.get_or_create(**group_data)
         
         instance_pet = Pet.objects.create(group=instance_group, **pets_data)
-
         for trait_data in traits_data:
-            
-            instance_trait, _ = Trait.objects.get_or_create(trait_name__iexact=trait_data['trait_name'])
-            
-            instance_trait.traits.add(instance_pet)
+            trait = Trait.objects.filter(name__iexact=trait_data["name"]).first()
+            if not trait:
+                trait = Trait.objects.create(**trait_data)
+            instance_pet.traits.add(trait)
 
         serializer = PetSerializer(instance_pet)
         
