@@ -13,8 +13,8 @@ class PetView(APIView, PageNumberPagination):
         trait = request.query_params.get('trait', None)
 
         if trait:
-            pets = pets.filter(traits__trait_name__iexact=trait)
-        
+            pets = Pet.objects.filter(traits__name__iexact=trait)
+           
         result_page = self.paginate_queryset(pets, request)
         
         serializer = PetSerializer(instance=result_page, many=True)
@@ -63,29 +63,30 @@ class PetDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     def patch(self, request: Request, pet_id: int) -> Response:
-        serializer = PetSerializer(data=request.data, partial=True)
         try:
             pet = Pet.objects.get(id=pet_id)
         except Pet.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PetSerializer(pet, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
        
         group_data = serializer.validated_data.pop('group', None)
         traits_data = serializer.validated_data.pop('traits', None)
-        
-        if group_data:
+            
+        if group_data: 
             group_data, _ = Group.objects.get_or_create(**group_data)
             pet.group = group_data
 
-        new_traits = []
-        print(new_traits)
-        for trait_data in traits_data:
-            trait = Trait.objects.filter(name__iexact=trait_data["name"]).first()
-            if not trait:
-                trait = Trait.objects.create(**trait_data)   
-            new_traits.append(trait)
+        if traits_data:
+            new_traits = []
+            for trait_data in traits_data:
+                trait = Trait.objects.filter(name__iexact=trait_data["name"]).first()
+                if not trait:
+                    trait = Trait.objects.create(**trait_data)   
+                
+                new_traits.append(trait)
 
-        pet.traits.set(new_traits)
+            pet.traits.set(new_traits)
 
         for key, value in serializer.validated_data.items():
             setattr(pet, key, value)
