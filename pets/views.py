@@ -73,17 +73,22 @@ class PetDetailView(APIView):
         group_data = serializer.validated_data.pop('group', None)
         traits_data = serializer.validated_data.pop('traits', None)
             
-        if group_data: 
-            group_data, _ = Group.objects.get_or_create(**group_data)
-            pet.group = group_data
+        if group_data:
+            try:
+                group = Group.objects.get(**group_data)
+            except Group.DoesNotExist:
+                group = Group.objects.create(**group_data)
+    
+            pet.group = group
 
         if traits_data:
             new_traits = []
             for trait_data in traits_data:
-                trait = Trait.objects.filter(name__iexact=trait_data["name"]).first()
-                if not trait:
-                    trait = Trait.objects.create(**trait_data)   
-                
+                try:
+                    trait = Trait.objects.get(name__iexact=trait_data["name"])
+                except Trait.DoesNotExist:
+                    trait = Trait.objects.create(**trait_data)
+        
                 new_traits.append(trait)
 
             pet.traits.set(new_traits)
